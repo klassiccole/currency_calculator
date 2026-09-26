@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Currency_Counter</string>
+    <string name="app_name">Currency Calculator</string>
 
     <string name="label_total">TOTAL USD</string>
 

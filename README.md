@@ -4,10 +4,11 @@ I could only find apps on my android phone that had ads on them when I used thei
 
 ## Features
 
-- Supports the following currency denominations:
+- Home page with tiles for quick access to each tool.
+- Navigation drawer (hamburger menu) available on every page.
+- **Currency Counter** — supports the following currency denominations:
     - 1¢, 5¢, 10¢, 25¢, $1, $5, $10, $20, $50, $100.
-- User-friendly interface with input fields for each denomination.
-- Real-time calculation of total value.
+- **Currency Converter** — two-sided picker (any listed currency to any other) with static offline rates for v1.
 
 ## Requirements
 
@@ -25,20 +26,32 @@ I could only find apps on my android phone that had ads on them when I used thei
 ## How to Use
 
 1. Open the app.
-2. Enter the quantity of each currency denomination in the corresponding input field.
-3. The app will calculate and display the total amount at the bottom.
+2. Pick a tool from the home page (or the hamburger menu).
+3. **Currency Counter**: Enter the quantity of each denomination in the corresponding input field and the total updates in real time.
+4. **Currency Converter**: Enter an amount, pick a "from" and "to" currency, and the converted result is shown instantly.
 
 ## Development
 
 - **Language**: Kotlin
-- **Framework**: Android Jetpack Compose
+- **Framework**: Android Jetpack Compose (single-activity, Navigation-Compose)
 - **IDE**: Android Studio
+- **Build**: Gradle 8.2 (wrapper included), Android Gradle Plugin 8.2.2, JDK 17 (path configured in `gradle.properties` via `org.gradle.java.home`)
+
+To build from the command line:
+
+```
+./gradlew assembleDebug
+```
+
+The debug APK is output to `app/build/outputs/apk/debug/`.
 
 ## Future Improvements
 
-- Add support for international currencies.
+- Currency Converter: live exchange rates via a free API (e.g., Frankfurter), with the current static rates as an offline fallback.
+- Persist counter sessions and add a count history page.
+- Settings screen.
+- Visual redesign of the Currency Counter screen to match the new theme.
 - Improve UI design and add animations.
 
 ## Author
-Cole Dorazio  
-
+Cole Dorazio
