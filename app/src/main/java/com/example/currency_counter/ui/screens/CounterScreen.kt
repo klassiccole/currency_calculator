@@ -2,16 +2,22 @@
 
 package com.example.currency_counter.ui.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,18 +33,27 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material.icons.filled.Dialpad
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -52,6 +67,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -61,6 +79,9 @@ import com.example.currency_counter.ui.theme.DarkGreenInk
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 private data class Denomination(
     val label: String,
@@ -107,6 +128,11 @@ fun CounterScreen(modifier: Modifier = Modifier) {
     var counts by rememberSaveable {
         mutableStateOf(AllDenominations.map { 0 })
     }
+    var keypadOpen by rememberSaveable { mutableStateOf(false) }
+    var activeIndex by rememberSaveable { mutableStateOf(0) }
+    val scrollState = rememberScrollState()
+    val scrollContainerY = remember { mutableStateOf(0f) }
+    val rowYs = remember { mutableStateMapOf<Int, Float>() }
 
     fun setCount(index: Int, value: Int) {
         counts = counts.mapIndexed { i, count ->
@@ -122,40 +148,102 @@ fun CounterScreen(modifier: Modifier = Modifier) {
         label = "total"
     )
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        TotalCard(
-            total = animatedTotal,
-            onClear = { counts = AllDenominations.map { 0 } },
-            hasCounts = counts.any { it > 0 }
-        )
+    LaunchedEffect(activeIndex, keypadOpen) {
+        if (keypadOpen) {
+            delay(120)
+            rowYs[activeIndex]?.let { y ->
+                scrollState.animateScrollTo((y - scrollContainerY.value).roundToInt())
+            }
+        }
+    }
 
+    BackHandler(enabled = keypadOpen) { keypadOpen = false }
+
+    Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
+                .fillMaxSize()
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            DenominationGroup(
-                title = "Coins",
-                denominations = Coins,
-                offset = 0,
-                isCoin = true,
-                counts = counts,
-                onCountChange = ::setCount
+            TotalCard(
+                total = animatedTotal,
+                onClear = { counts = AllDenominations.map { 0 } },
+                hasCounts = counts.any { it > 0 }
             )
 
-            DenominationGroup(
-                title = "Bills",
-                denominations = Bills,
-                offset = Coins.size,
-                isCoin = false,
-                counts = counts,
-                onCountChange = ::setCount
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(scrollState)
+                    .onGloballyPositioned { layoutCoordinates ->
+                        scrollContainerY.value = layoutCoordinates.positionInRoot().y
+                    },
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                DenominationGroup(
+                    title = "Coins",
+                    denominations = Coins,
+                    offset = 0,
+                    isCoin = true,
+                    counts = counts,
+                    activeIndex = activeIndex,
+                    selectionEnabled = keypadOpen,
+                    onSelectRow = { activeIndex = it },
+                    onRowPosition = { index, y -> rowYs[index] = y },
+                    onCountChange = ::setCount
+                )
+
+                DenominationGroup(
+                    title = "Bills",
+                    denominations = Bills,
+                    offset = Coins.size,
+                    isCoin = false,
+                    counts = counts,
+                    activeIndex = activeIndex,
+                    selectionEnabled = keypadOpen,
+                    onSelectRow = { activeIndex = it },
+                    onRowPosition = { index, y -> rowYs[index] = y },
+                    onCountChange = ::setCount
+                )
+            }
+        }
+
+        if (!keypadOpen) {
+            FloatingActionButton(
+                onClick = {
+                    val firstEmpty = counts.indexOfFirst { it == 0 }
+                    activeIndex = if (firstEmpty >= 0) firstEmpty else 0
+                    keypadOpen = true
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Dialpad,
+                    contentDescription = "Open quick entry keypad"
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = keypadOpen,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically { it } + fadeIn(),
+            exit = slideOutVertically { it } + fadeOut()
+        ) {
+            QuickEntryKeypad(
+                activeLabel = AllDenominations[activeIndex].label,
+                onDigit = { digit ->
+                    setCount(activeIndex, min(999, counts[activeIndex] * 10 + digit))
+                },
+                onBackspace = { setCount(activeIndex, counts[activeIndex] / 10) },
+                onClear = { setCount(activeIndex, 0) },
+                onNext = { activeIndex = (activeIndex + 1) % AllDenominations.size },
+                onClose = { keypadOpen = false }
             )
         }
     }
@@ -212,6 +300,10 @@ private fun DenominationGroup(
     offset: Int,
     isCoin: Boolean,
     counts: List<Int>,
+    activeIndex: Int,
+    selectionEnabled: Boolean,
+    onSelectRow: (Int) -> Unit,
+    onRowPosition: (index: Int, y: Float) -> Unit,
     onCountChange: (index: Int, value: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -238,7 +330,11 @@ private fun DenominationGroup(
                     label = denomination.label,
                     count = counts[globalIndex],
                     isCoin = isCoin,
-                    onCountChange = { onCountChange(globalIndex, it) }
+                    isActive = selectionEnabled && globalIndex == activeIndex,
+                    selectionEnabled = selectionEnabled,
+                    onSelect = { onSelectRow(globalIndex) },
+                    onCountChange = { onCountChange(globalIndex, it) },
+                    onPosition = { y -> onRowPosition(globalIndex, y) }
                 )
             }
         }
@@ -250,20 +346,40 @@ private fun DenominationRow(
     label: String,
     count: Int,
     isCoin: Boolean,
+    isActive: Boolean,
+    selectionEnabled: Boolean,
+    onSelect: () -> Unit,
     onCountChange: (Int) -> Unit,
+    onPosition: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .onGloballyPositioned { layoutCoordinates ->
+                onPosition(layoutCoordinates.positionInRoot().y)
+            },
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        DenominationBadge(label = label, isCoin = isCoin)
-        Spacer(modifier = Modifier.weight(1f))
+        DenominationBadge(
+            label = label,
+            isCoin = isCoin,
+            selected = isActive,
+            onClick = if (selectionEnabled) onSelect else null
+        )
+        Text(
+            text = "\u00D7",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 36.dp)
+        )
         WheelCluster(
             count = count,
             label = label,
+            highlighted = isActive,
+            onClick = if (selectionEnabled) onSelect else null,
             onCountChange = onCountChange
         )
     }
@@ -273,6 +389,8 @@ private fun DenominationRow(
 private fun DenominationBadge(
     label: String,
     isCoin: Boolean,
+    selected: Boolean,
+    onClick: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     val shape = if (isCoin) CircleShape else BadgeShape
@@ -286,7 +404,17 @@ private fun DenominationBadge(
             .shadow(elevation = 4.dp, shape = shape)
             .clip(shape)
             .background(Brush.verticalGradient(listOf(faceLight, faceDark)))
-            .padding(3.dp),
+            .padding(3.dp)
+            .then(
+                if (selected) {
+                    Modifier.border(2.dp, MaterialTheme.colorScheme.primary, shape)
+                } else {
+                    Modifier
+                }
+            )
+            .then(
+                if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         Box(
@@ -324,13 +452,28 @@ private fun DenominationBadge(
 private fun WheelCluster(
     count: Int,
     label: String,
+    highlighted: Boolean,
+    onClick: (() -> Unit)?,
     onCountChange: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val digits = count.toString().padStart(3, '0')
+    val clusterShape = RoundedCornerShape(14.dp)
 
     Row(
-        modifier = modifier,
+        modifier = modifier
+            .clip(clusterShape)
+            .then(
+                if (highlighted) {
+                    Modifier.border(2.dp, MaterialTheme.colorScheme.primary, clusterShape)
+                } else {
+                    Modifier
+                }
+            )
+            .then(
+                if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+            )
+            .padding(2.dp),
         horizontalArrangement = Arrangement.spacedBy(WheelGap)
     ) {
         digits.forEachIndexed { displayIndex, digitChar ->
@@ -513,6 +656,134 @@ private fun placeName(placeIndex: Int): String = when (placeIndex) {
     0 -> "ones"
     1 -> "tens"
     else -> "hundreds"
+}
+
+@Composable
+private fun QuickEntryKeypad(
+    activeLabel: String,
+    onDigit: (Int) -> Unit,
+    onBackspace: () -> Unit,
+    onClear: () -> Unit,
+    onNext: () -> Unit,
+    onClose: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 8.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Quick entry",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = activeLabel,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                IconButton(onClick = onClose) {
+                    Icon(
+                        Icons.Filled.KeyboardArrowDown,
+                        contentDescription = "Close quick entry keypad"
+                    )
+                }
+            }
+
+            listOf(
+                listOf(1, 2, 3),
+                listOf(4, 5, 6),
+                listOf(7, 8, 9)
+            ).forEach { rowDigits ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    rowDigits.forEach { digit ->
+                        KeyButton(
+                            onClick = { onDigit(digit) },
+                            text = digit.toString(),
+                            container = MaterialTheme.colorScheme.primaryContainer,
+                            content = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                KeyButton(
+                    onClick = onClear,
+                    text = "C",
+                    container = MaterialTheme.colorScheme.surfaceVariant,
+                    content = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                KeyButton(
+                    onClick = { onDigit(0) },
+                    text = "0",
+                    container = MaterialTheme.colorScheme.primaryContainer,
+                    content = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.weight(1f)
+                )
+                KeyButton(
+                    onClick = onBackspace,
+                    icon = Icons.Filled.Backspace,
+                    contentDescription = "Backspace",
+                    container = MaterialTheme.colorScheme.surfaceVariant,
+                    content = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                KeyButton(
+                    onClick = onNext,
+                    icon = Icons.Filled.ArrowForward,
+                    contentDescription = "Next denomination",
+                    container = MaterialTheme.colorScheme.primary,
+                    content = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun KeyButton(
+    onClick: () -> Unit,
+    text: String? = null,
+    icon: ImageVector? = null,
+    contentDescription: String? = null,
+    container: Color,
+    content: Color,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(52.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = container,
+            contentColor = content
+        )
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = contentDescription)
+        } else {
+            Text(
+                text = text ?: "",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
 }
 
 private fun pow10(power: Int): Int = when (power) {
