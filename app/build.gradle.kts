@@ -12,8 +12,8 @@ android {
         applicationId = "com.example.currency_counter"
         minSdk = 21
         targetSdk = 34
-        versionCode = 2
-        versionName = "2.0"
+        versionCode = 3
+        versionName = "2.1"
     }
 
     compileOptions {
@@ -52,7 +52,7 @@ dependencies {
     implementation("androidx.compose.material:material:1.5.4")
     implementation("androidx.compose.runtime:runtime:1.5.4")
     implementation("androidx.compose.material3:material3:1.1.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
     // Testing dependencies
     testImplementation("junit:junit:4.13.2") // JUnit for unit tests

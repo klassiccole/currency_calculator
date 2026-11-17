@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.DrawerValue
@@ -41,6 +43,9 @@ import com.example.currency_counter.data.ThemePreferences
 import com.example.currency_counter.ui.screens.ConverterScreen
 import com.example.currency_counter.ui.screens.CounterScreen
 import com.example.currency_counter.ui.screens.HomeScreen
+import com.example.currency_counter.ui.screens.GuideScreen
+import com.example.currency_counter.ui.screens.MetalDetailScreen
+import com.example.currency_counter.ui.screens.MetalsScreen
 import com.example.currency_counter.ui.screens.SettingsScreen
 import kotlinx.coroutines.launch
 
@@ -48,13 +53,18 @@ object Routes {
     const val HOME = "home"
     const val COUNTER = "counter"
     const val CONVERTER = "converter"
+    const val METALS = "metals"
+    const val METAL_DETAIL = "metal/{code}"
+    const val GUIDE = "guide"
     const val SETTINGS = "settings"
 }
 
-private fun titleFor(route: String): String = when (route) {
-    Routes.COUNTER -> "Currency Counter"
-    Routes.CONVERTER -> "Currency Converter"
-    Routes.SETTINGS -> "Settings"
+private fun titleFor(route: String): String = when {
+    route == Routes.COUNTER -> "Counter"
+    route == Routes.CONVERTER -> "Converter"
+    route == Routes.METALS || route.startsWith("metal/") -> "Precious Metals"
+    route == Routes.GUIDE -> "Guide"
+    route == Routes.SETTINGS -> "Settings"
     else -> "Currency Calculator"
 }
 
@@ -91,16 +101,28 @@ fun AppRoot() {
                     modifier = Modifier.padding(16.dp)
                 )
                 NavigationDrawerItem(
-                    label = { Text("Currency Counter") },
+                    label = { Text("Counter") },
                     icon = { Icon(Icons.Filled.AttachMoney, contentDescription = null) },
                     selected = route == Routes.COUNTER,
                     onClick = { open(Routes.COUNTER) }
                 )
                 NavigationDrawerItem(
-                    label = { Text("Currency Converter") },
+                    label = { Text("Converter") },
                     icon = { Icon(Icons.Filled.SwapHoriz, contentDescription = null) },
                     selected = route == Routes.CONVERTER,
                     onClick = { open(Routes.CONVERTER) }
+                )
+                NavigationDrawerItem(
+                    label = { Text("Precious Metals") },
+                    icon = { Icon(Icons.Filled.Diamond, contentDescription = null) },
+                    selected = route == Routes.METALS || route.startsWith("metal/"),
+                    onClick = { open(Routes.METALS) }
+                )
+                NavigationDrawerItem(
+                    label = { Text("Guide") },
+                    icon = { Icon(Icons.Filled.MenuBook, contentDescription = null) },
+                    selected = route == Routes.GUIDE || route.startsWith("guide/"),
+                    onClick = { open(Routes.GUIDE) }
                 )
                 NavigationDrawerItem(
                     label = { Text("Settings") },
@@ -139,6 +161,19 @@ fun AppRoot() {
                 }
                 composable(Routes.COUNTER) { CounterScreen() }
                 composable(Routes.CONVERTER) { ConverterScreen() }
+                composable(Routes.METALS) {
+                    MetalsScreen(
+                        onOpenMetal = { code ->
+                            navController.navigate("metal/$code") { launchSingleTop = true }
+                        }
+                    )
+                }
+                composable(Routes.METAL_DETAIL) { entry ->
+                    MetalDetailScreen(code = entry.arguments?.getString("code") ?: "XAU")
+                }
+                composable(Routes.GUIDE) {
+                    GuideScreen()
+                }
                 composable(Routes.SETTINGS) {
                     SettingsScreen(
                         darkModeOverride = darkModeOverride,

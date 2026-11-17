@@ -1,6 +1,7 @@
 package com.example.currency_counter.data
 
 import android.content.Context
+import org.json.JSONArray
 import org.json.JSONObject
 
 // Small SharedPreferences-backed cache: last successful rates + currency names,
@@ -8,11 +9,15 @@ import org.json.JSONObject
 // hardcoded fallback list.
 object CurrencyPreferences {
     private const val FILE = "currency_prefs"
-    private const val KEY_RATES = "rates"
-    private const val KEY_NAMES = "names"
-    private const val KEY_AS_OF = "as_of"
+    // _v2: metals joined the cached rate set; versioned keys invalidate the
+    // pre-metals cache written by older builds.
+    private const val KEY_RATES = "rates_v2"
+    private const val KEY_NAMES = "names_v2"
+    private const val KEY_AS_OF = "as_of_v2"
     private const val KEY_FROM = "from_code"
     private const val KEY_TO = "to_code"
+    private const val KEY_PROVIDERS = "providers"
+    private const val KEY_METAL_PROVIDERS_PREFIX = "metal_providers_"
 
     data class Snapshot(
         val rates: Map<String, Double>,
@@ -77,6 +82,52 @@ object CurrencyPreferences {
             .edit()
             .putString(KEY_FROM, fromCode)
             .putString(KEY_TO, toCode)
+            .apply()
+    }
+
+    fun loadProviders(context: Context): Map<String, ProviderMeta>? {
+        val json = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .getString(KEY_PROVIDERS, null) ?: return null
+        val obj = JSONObject(json)
+        val result = mutableMapOf<String, ProviderMeta>()
+        for (key in obj.keys()) {
+            val entry = obj.getJSONObject(key)
+            result[key] = ProviderMeta(
+                key = key,
+                name = entry.getString("name"),
+                country = entry.optString("country").ifEmpty { null }
+            )
+        }
+        return result
+    }
+
+    fun saveProviders(context: Context, providers: Map<String, ProviderMeta>) {
+        val obj = JSONObject()
+        for ((key, meta) in providers) {
+            obj.put(
+                key,
+                JSONObject().put("name", meta.name).put("country", meta.country ?: "")
+            )
+        }
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_PROVIDERS, obj.toString())
+            .apply()
+    }
+
+    fun loadMetalProviders(context: Context, code: String): List<String>? {
+        val json = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .getString(KEY_METAL_PROVIDERS_PREFIX + code, null) ?: return null
+        val array = JSONArray(json)
+        return List(array.length()) { array.getString(it) }
+    }
+
+    fun saveMetalProviders(context: Context, code: String, keys: List<String>) {
+        val array = JSONArray()
+        for (key in keys) array.put(key)
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_METAL_PROVIDERS_PREFIX + code, array.toString())
             .apply()
     }
 }

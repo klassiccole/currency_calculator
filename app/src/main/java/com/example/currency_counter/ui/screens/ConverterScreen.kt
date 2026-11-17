@@ -27,7 +27,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,16 +46,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import android.widget.Toast
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -64,15 +60,15 @@ import com.example.currency_counter.data.Currency
 import com.example.currency_counter.data.CurrencyPreferences
 import com.example.currency_counter.data.CurrencyRepository
 import com.example.currency_counter.ui.QuickEntryKeypad
+import com.example.currency_counter.ui.formatAmount
+import com.example.currency_counter.ui.parseAmount
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 @Composable
 fun ConverterScreen(modifier: Modifier = Modifier) {
     val ratesState by CurrencyRepository.state.collectAsState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
 
     LaunchedEffect(Unit) {
         CurrencyRepository.refreshIfNeeded(context)
@@ -96,14 +92,7 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
     fun convertedText(text: String, source: Currency?, target: Currency?): String {
         val value = parseAmount(text) ?: return ""
         if (source == null || target == null) return ""
-        return formatConverted(CurrencyRepository.convert(value, source, target))
-    }
-
-    fun copyValue(text: String) {
-        val value = text.replace(",", "")
-        if (value.isEmpty()) return
-        clipboard.setText(AnnotatedString(value))
-        Toast.makeText(context, "Copied $value", Toast.LENGTH_SHORT).show()
+        return formatAmount(CurrencyRepository.convert(value, source, target))
     }
 
     fun setAmountText(isFrom: Boolean, newText: String) {
@@ -178,9 +167,6 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
                     singleLine = true,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = { copyValue(toText) }) {
-                    Icon(Icons.Filled.ContentCopy, contentDescription = "Copy converted value")
-                }
             }
 
             Row(
@@ -280,18 +266,6 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
         }
     }
 }
-
-// Two decimals for normal magnitudes (with thousands separators), four for
-// results too small for 2dp to mean anything.
-private fun formatConverted(value: Double): String {
-    val pattern = if (value >= 1.0 || value <= -1.0) "%,.2f" else "%.4f"
-    return String.format(Locale.US, pattern, value)
-}
-
-// Typed text may contain the thousands separators we render into derived values;
-// grouping is display-only, so strip it before parsing.
-private fun parseAmount(text: String): Double? =
-    text.replace(",", "").toDoubleOrNull()
 
 @Composable
 private fun CurrencyPicker(
