@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -48,11 +49,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.currency_counter.ui.theme.DarkGreenInk
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
@@ -89,8 +94,13 @@ private val WheelWidth = 44.dp
 private val WheelGap = 6.dp
 private val WheelShape = RoundedCornerShape(10.dp)
 private val BadgeShape = RoundedCornerShape(12.dp)
-private val BadgeWidth = 64.dp
-private val CoinBadgeSize = 52.dp
+private val BadgeWidth = 80.dp
+private val CoinBadgeSize = 66.dp
+
+private val CoinFaceLight = Color(0xFFD7E7CF)
+private val CoinFaceDark = Color(0xFFAECBA9)
+private val BillFaceLight = Color(0xFFA9D3B2)
+private val BillFaceDark = Color(0xFF8CBE97)
 
 @Composable
 fun CounterScreen(modifier: Modifier = Modifier) {
@@ -115,7 +125,6 @@ fun CounterScreen(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -125,23 +134,30 @@ fun CounterScreen(modifier: Modifier = Modifier) {
             hasCounts = counts.any { it > 0 }
         )
 
-        DenominationGroup(
-            title = "Coins",
-            denominations = Coins,
-            offset = 0,
-            isCoin = true,
-            counts = counts,
-            onCountChange = ::setCount
-        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            DenominationGroup(
+                title = "Coins",
+                denominations = Coins,
+                offset = 0,
+                isCoin = true,
+                counts = counts,
+                onCountChange = ::setCount
+            )
 
-        DenominationGroup(
-            title = "Bills",
-            denominations = Bills,
-            offset = Coins.size,
-            isCoin = false,
-            counts = counts,
-            onCountChange = ::setCount
-        )
+            DenominationGroup(
+                title = "Bills",
+                denominations = Bills,
+                offset = Coins.size,
+                isCoin = false,
+                counts = counts,
+                onCountChange = ::setCount
+            )
+        }
     }
 }
 
@@ -207,8 +223,8 @@ private fun DenominationGroup(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
             )
             denominations.forEachIndexed { groupIndex, denomination ->
@@ -259,17 +275,9 @@ private fun DenominationBadge(
     isCoin: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val containerColor = if (isCoin) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.secondary
-    }
-    val contentColor = if (isCoin) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSecondary
-    }
     val shape = if (isCoin) CircleShape else BadgeShape
+    val faceLight = if (isCoin) CoinFaceLight else BillFaceLight
+    val faceDark = if (isCoin) CoinFaceDark else BillFaceDark
     Box(
         modifier = modifier
             .then(
@@ -277,15 +285,37 @@ private fun DenominationBadge(
             )
             .shadow(elevation = 4.dp, shape = shape)
             .clip(shape)
-            .background(containerColor)
-            .padding(vertical = 8.dp),
+            .background(Brush.verticalGradient(listOf(faceLight, faceDark)))
+            .padding(3.dp),
         contentAlignment = Alignment.Center
     ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.White.copy(alpha = 0.30f),
+                        0.35f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = 0.10f)
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .border(1.dp, DarkGreenInk.copy(alpha = 0.45f), shape)
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .padding(2.dp)
+                .border(1.dp, DarkGreenInk.copy(alpha = 0.25f), shape)
+        )
         Text(
             text = label,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color = contentColor
+            color = DarkGreenInk
         )
     }
 }
@@ -386,8 +416,29 @@ private fun DigitWheel(
                 .height(WheelItemHeight)
                 .align(Alignment.Center)
                 .background(
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                    Brush.horizontalGradient(
+                        0f to MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0f),
+                        0.2f to MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+                        0.8f to MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+                        1f to MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0f)
+                    )
                 )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .align(Alignment.Center)
+                .offset(y = -WheelItemHeight / 2)
+                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .align(Alignment.Center)
+                .offset(y = WheelItemHeight / 2)
+                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
         )
         LazyColumn(
             state = listState,
@@ -421,11 +472,40 @@ private fun DigitWheel(
                         text = value.toString(),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
+                        modifier = Modifier.graphicsLayer {
+                            val scale = 0.82f + 0.18f * alpha
+                            scaleX = scale
+                            scaleY = scale
+                        }
                     )
                 }
             }
         }
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Black.copy(alpha = 0.18f),
+                        0.3f to Color.Transparent,
+                        0.7f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = 0.18f)
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.horizontalGradient(
+                        0f to Color.Black.copy(alpha = 0.10f),
+                        0.3f to Color.Transparent,
+                        0.7f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = 0.10f)
+                    )
+                )
+        )
     }
 }
 
