@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ system splash screen: teal background with the logo glyph
+         (the icon mask circle blends into the matching splash background). -->
+    <style name="Theme.Currency_Counter" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@color/logo_background</item>
+        <item name="android:windowSplashScreenBackground">@color/logo_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/logo_splash_foreground</item>
+    </style>
+</resources>

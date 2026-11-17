@@ -52,6 +52,7 @@ dependencies {
     implementation("androidx.compose.material:material:1.5.4")
     implementation("androidx.compose.runtime:runtime:1.5.4")
     implementation("androidx.compose.material3:material3:1.1.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     // Testing dependencies
     testImplementation("junit:junit:4.13.2") // JUnit for unit tests
